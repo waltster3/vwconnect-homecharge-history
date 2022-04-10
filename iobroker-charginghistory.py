@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pandas as pd
 
 # USER SETTINGS
-NETWORK_LOCATION = "raspberrypi:8087"   # IP or computer name and port of the io-broker.simple-api
+NETWORK_LOCATION = "localhost:8087"   # IP or computer name and port of the io-broker.simple-api
 
 SCHEME = "http"
 OBJECTS_PATH = "objects"
@@ -62,7 +62,7 @@ def make_records(objects_sorted):
     # receiving the first object type (authentication_method) extract the record name
     # and find all matching objects with the same record name
     first_type_of_objects = list(objects_sorted.values())[0]
-    
+
     for record in first_type_of_objects:
         pattern = ".*records\.([a-zA-Z0-9-:]*)"
         match = re.search(pattern, record)
@@ -98,10 +98,12 @@ def retrieve_objects(record_name, objects):
     
 def get_object_states(records):
 
+    records.pop("latestItem", 0)
+
     with ThreadPoolExecutor() as executor:
         values = executor.map(retrieve_objects, records.keys(), records.values())
-            
-    return list(values)
+
+    return values
 
 if __name__ == "__main__":
     objects = getObjects()
@@ -119,12 +121,11 @@ if __name__ == "__main__":
     dataframe = pd.DataFrame(values)
 
     date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
-    dataframe["created_at"] = pd.to_datetime(dataframe["created_at"], format = date_format, errors="raise")
     dataframe["start_date_time"] = pd.to_datetime(dataframe["start_date_time"], format = date_format, errors="raise" )
     dataframe["stop_date_time"] = pd.to_datetime(dataframe["stop_date_time"], format = date_format, errors="raise" )
 
-    dataframe["year"] = dataframe["created_at"].dt.strftime("%Y")
-    dataframe["month"] = dataframe["created_at"].dt.strftime("%B")
-    dataframe["day"] = dataframe["created_at"].dt.strftime("%d")
+    dataframe["year"] = dataframe["start_date_time"].dt.strftime("%Y")
+    dataframe["month"] = dataframe["start_date_time"].dt.strftime("%B")
+    dataframe["day"] = dataframe["start_date_time"].dt.strftime("%d")
 
     dataframe.to_csv("export.csv")
